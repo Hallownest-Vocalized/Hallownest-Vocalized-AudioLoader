@@ -53,17 +53,17 @@ public class HallownestVocalizedAudioLoaderMod : Mod
     }
 
     private static void LoadAssetBundle()
-    {
-        AudioBundle = AssetBundle.LoadFromMemory(AssemblyExtensions.GetBytesFromResources("Resources.audiobundle")) 
-                      ?? AssetBundle.LoadFromFile(AssemblyExtensions.GetCurrentDirectory() + "/audiobundle");
+    { 
+        _audioBundle = AssetBundle.LoadFromMemory(AssemblyExtensions.GetBytesFromResources("Resources.audiobundle")) 
+                    ?? AssetBundle.LoadFromFile(AssemblyExtensions.GetCurrentDirectory() + "/audiobundle");
 
-        if (AudioBundle == null)
+        if (_audioBundle == null)
         {
             Instance.LogError("Hallownest Vocalized audio not loaded");
             return;
         }
 
-        foreach (var audio in AudioBundle.GetAllAssetNames())
+        foreach (var audio in _audioBundle.GetAllAssetNames())
         {
             if (new []{".mp3",".wav"}.Any(extension => audio.EndsWith(extension)))
             {
