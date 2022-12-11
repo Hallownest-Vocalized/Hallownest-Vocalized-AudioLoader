@@ -10,7 +10,7 @@
         <Copyright>Copyright © Mulhima 2022</Copyright>
         <Authors>Mulhima</Authors>
         <NoWarn>7035</NoWarn>
-        <AssemblyVersion>0.1.*</AssemblyVersion>
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
         <Deterministic>false</Deterministic>
         <OutputPath>bin\$(Configuration)\</OutputPath>
         <LangVersion>latest</LangVersion>
