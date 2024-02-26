@@ -8,7 +8,10 @@ using JetBrains.Annotations;
 using Modding.Menu;
 using UnityEngine;
 using UnityEngine.UI;
+using Satchel;
 using Object = UnityEngine.Object;
+using HKVocals;
+using HKMirror.Hooks.OnHooks;
 
 #pragma warning disable CS8618
 namespace HallownestVocalizedAudioLoader;
@@ -17,26 +20,15 @@ namespace HallownestVocalizedAudioLoader;
 public class HallownestVocalizedAudioLoaderMod : Mod
 {
     public static HallownestVocalizedAudioLoaderMod Instance;
-    private static AssetBundle _audioBundle;
-    private static bool AudioLoadSuccess = false;
-    public static List<string> AudioNames { get; } = new();
-    public static bool MainModExists => ModHooks.GetMod("Hallownest Vocalized") is Mod;
+    public static AssetBundle audioBundle;
+    public static AssetBundle styleBundle;
+    public static AssetBundle creditsBundle;
+    //private static bool AudioLoadSuccess = false;
+    //public static List<string> AudioNames { get; } = new();
+    public static bool MainModExists => AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "HKVocal");
     private static AssetBundleCreateRequest loadRequest;
-    public static AssetBundle AudioBundle
-    {
-        get
-        {
-            if (!AudioLoadSuccess)
-            {
-                throw new Exception("Audiobundle has not loaded successfully yet");
-            }
 
-            return _audioBundle;
-        }
-        set => _audioBundle = value;
-    }
-
-    private static NonBouncer CoroutineHolder;
+    public static NonBouncer CoroutineHolder;
     private static GameObject TextCanvas;
     private static Text TextPanelText;
     private const string WaitText = "Please wait while Hallownest Vocalized audio is loading...";
@@ -44,14 +36,27 @@ public class HallownestVocalizedAudioLoaderMod : Mod
     public HallownestVocalizedAudioLoaderMod() : base("Hallownest Vocalized AudioLoader")
     {
         Instance = this;
-
-        CoroutineHolder = new GameObject().AddComponent<NonBouncer>();
-        Object.DontDestroyOnLoad(CoroutineHolder);
-
+        
         //although we can't guarantee main mod exists, i feel its a worth it trade off
         //to load the bundle async during preloads and having to unload the bundle if mod doesnt exist
         //instead of loading it async after preloads and wasting all that time
         //if some idiot has the audio without main mod its their loss ig
+
+        //actually we can tell if the mod exists - frog
+
+        if (!MainModExists) return;
+
+        OnMenuStyleTitle.AfterOrig.SetTitle += AddCustomBanner;
+        SFCore.MenuStyleHelper.AddMenuStyleHook += MajorFeatures.MenuTheme.AddTheme;
+
+        HKVocals.HKVocals.Icon = Satchel.AssemblyUtils.GetSpriteFromResources("Resources.icon.png");
+
+        CoroutineHolder = new GameObject().AddComponent<NonBouncer>();
+        Object.DontDestroyOnLoad(CoroutineHolder);
+
+        Instance.Log("Starting Hallownest Vocalised Misc. Load");
+        styleBundle = AssetBundle.LoadFromMemory(AssemblyUtils.GetBytesFromResources("Resources.stylebundle"));
+        creditsBundle = AssetBundle.LoadFromMemory(AssemblyUtils.GetBytesFromResources("Resources.creditsbundle"));
         
         Instance.Log("Starting Hallownest Vocalised Audio Load");
         LoadAssetBundle();
@@ -64,6 +69,10 @@ public class HallownestVocalizedAudioLoaderMod : Mod
         {
             On.GameManager.StartNewGame += StopStartNewGame;
             On.GameManager.ContinueGame += StopContinueGame;
+            UIManager.EditMenus += UI.ExtrasMenu.AddCreditsButton;
+
+            var tmpStyle = MenuStyles.Instance.styles.First(x => x.styleObject.name.Contains("HKVStyle"));
+            MenuStyles.Instance.SetStyle(MenuStyles.Instance.styles.ToList().IndexOf(tmpStyle), false);
         }
         else
         {
@@ -72,7 +81,7 @@ public class HallownestVocalizedAudioLoaderMod : Mod
 
             
             //we dont want to unnecessarily keep 200MB of RAM captive if main mod doesnt exist
-            Log("Unloading assetbundle because main mod doesnt exist");
+            /*Log("Unloading assetbundle because main mod doesnt exist");
         
             //either of them can be true only if the complete event has already run
             if (loadRequest.isDone || AudioLoadSuccess)
@@ -92,7 +101,7 @@ public class HallownestVocalizedAudioLoaderMod : Mod
                     _audioBundle.Unload(true);
                     AudioLoadSuccess = false;
                 };
-            }
+            }*/
         }
     }
 
@@ -119,7 +128,7 @@ public class HallownestVocalizedAudioLoaderMod : Mod
 
     private IEnumerator WaitForBundleToLoad()
     {
-        if (loadRequest.isDone) yield break;
+        if (loadRequest == null || loadRequest.isDone) yield break;
         
         CreateTextPanel();
         string prevText = "";
@@ -154,16 +163,39 @@ public class HallownestVocalizedAudioLoaderMod : Mod
             Instance.LogError("Hallownest Vocalized audio not loaded. no audio bundle was found neither embedded nor as an external file placed next to the dll");
             return;
         }
+
+        HKVocals.AudioAPI.AddAudioProvider(-1, new AssetBundleCreateRequestAudioProvider(loadRequest, true));
+        foreach (string s in ClipsToMute)
+            HKVocals.AudioAPI.AddMuteAudio(s);
         
         //we can't check here for main mod existence because it is not guaranteed to happen after mod inits
         //even tho realistically it probably will happen after mod inits
         loadRequest.completed += SaveLoadedBundle;
     }
+    
+    private void AddCustomBanner(OnMenuStyleTitle.Delegates.Params_SetTitle args)
+    {
+        //only change for english language. i doubt people on other languages want it
+        //if (Language.Language.CurrentLanguage() == LanguageCode.EN)
+        {
+            if (MainModExists)
+            {
+                args.self.Title.sprite = AssemblyUtils.GetSpriteFromResources(UnityEngine.Random.Range(1,1000) == 1 && HKVocals.HKVocals._globalSettings.settingsOpened 
+                    ? "Resources.Title_alt.png" 
+                    : "Resources.Title.png");
+            }
+            else
+            {
+                args.self.Title.sprite = AssemblyUtils.GetSpriteFromResources("Resources.Title_missingDeps.png");
+            }
+        }
+        
+    }
 
     public static void SaveLoadedBundle(AsyncOperation operation)
     {
-        _audioBundle = loadRequest.assetBundle;
-        foreach (var audio in _audioBundle.GetAllAssetNames())
+        audioBundle = loadRequest.assetBundle;
+        /*foreach (var audio in _audioBundle.GetAllAssetNames())
         {
             if (new[] { ".mp3", ".wav" }.Any(extension => audio.EndsWith(extension)))
             {
@@ -172,7 +204,7 @@ public class HallownestVocalizedAudioLoaderMod : Mod
             }
         }
 
-        AudioLoadSuccess = true;
+        AudioLoadSuccess = true;*/
         Instance.Log("Sucessfully loaded hallownest vocalized audio");
     }
 
@@ -205,4 +237,48 @@ public class HallownestVocalizedAudioLoaderMod : Mod
     }
 
     public override string GetVersion() => GetType().Assembly.GetName().Version.ToString() + (MainModExists ? "" : "Error Hallownest Vocalized not present");
+    
+    private static readonly List<string> ClipsToMute = new ()
+    {
+        "Salubra_Laugh_Loop",
+        "Sly_talk",
+        "Sly_talk_02",
+        "Sly_talk_03",
+        "Sly_talk_04",
+        "Sly_talk_05",
+        "Banker_talk_01",
+        "Stag_ambient_loop",
+        "junk_fluke_long_loop",
+        "junk_fluke_long_loop_nervous",
+        "Moss_Cultist_Loop",
+        "Grimm_talk_02",
+        "Grimm_talk_03",
+        "Grimm_talk_05",
+        "Grimm_talk_06", 
+        "Nailmsith_greet",
+        "Nailmsith_talk_02",
+        "Nailmsith_talk_03",
+        "Nailmsith_talk_04",
+        "Nailmsith_talk_05",
+        "Hornet_Dialogue_Generic_02",
+        "Hornet_Dialogue_Generic_03",
+        "Hornet_Dialogue_Generic_04",
+        "Hornet_Dialogue_Generic_05",
+        "Bow_Repeat",
+        "WD_outro",
+        "Stag_02",
+        "Hornet_Greenpath_01",
+        "Salubra_Talk",
+        "Mr_Mush_talk_03",
+        "GS_standard_01",
+        "GS_standard_02",
+        "GS_standard_05",
+        "GS_standard_06",
+        "GS_standard_07",
+        "GS_engine_room",
+        "GS_engine_room_03",
+        "GS_engine_room_04",
+        "Hunter_journal_02",
+        "Relic_Dealer_04",
+    };
 }
