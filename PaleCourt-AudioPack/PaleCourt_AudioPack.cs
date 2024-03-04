@@ -19,7 +19,7 @@ public class PaleCourtAudioPackMod : Mod
     public static bool MainModExists => AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "HKVocal");
     private static AssetBundleCreateRequest loadRequest;
 
-    public PaleCourtAudioPackMod() : base("Hallownest Vocalized AudioLoader")
+    public PaleCourtAudioPackMod() : base("Hallownest Vocalized - Pale Court AudioLoader")
     {
         Instance = this;
 
