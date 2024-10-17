@@ -55,7 +55,7 @@ public class HallownestVocalizedAudioLoaderMod : Mod
         Object.DontDestroyOnLoad(CoroutineHolder);
 
         Instance.Log("Starting Hallownest Vocalised Misc. Load");
-        styleBundle = AssetBundle.LoadFromMemory(AssemblyUtils.GetBytesFromResources("Resources.stylebundle"));
+        styleBundle = styleBundle = AssetBundle.LoadFromMemory(SystemInfo.operatingSystemFamily == OperatingSystemFamily.Linux ? AssemblyUtils.GetBytesFromResources("Resources.stylebundlelinux") : AssemblyUtils.GetBytesFromResources("Resources.stylebundle"));
         creditsBundle = AssetBundle.LoadFromMemory(AssemblyUtils.GetBytesFromResources("Resources.creditsbundle"));
         
         Instance.Log("Starting Hallownest Vocalised Audio Load");
