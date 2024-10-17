@@ -169,6 +169,14 @@ public class HallownestVocalizedAudioLoaderMod : Mod
         }
 
         HKVocals.AudioAPI.AddAudioProvider(-1, new AssetBundleCreateRequestAudioProvider(loadRequest, true));
+        foreach (var audio in loadRequest.assetBundle.GetAllAssetNames())
+        {
+            if (new[] { ".mp3", ".wav" }.Any(extension => audio.EndsWith(extension)))
+            {
+                HKVocals.AudioAPI.AudioNames.Add(Path.GetFileNameWithoutExtension(audio).ToUpper());
+                Instance.LogDebug($"Loaded audio: {audio}");
+            }
+        }
         foreach (string s in ClipsToMute)
             HKVocals.AudioAPI.AddMuteAudio(s);
         
