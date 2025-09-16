@@ -71,9 +71,9 @@ public class HallownestVocalizedAudioLoaderMod : Mod
             On.GameManager.ContinueGame += StopContinueGame;
             UIManager.EditMenus += UI.ExtrasMenu.AddCreditsButton;
 
-            if (!HKVocals.HKVocals._globalSettings.ForceMenuTheme)
+            if (HKVocals.HKVocals._globalSettings.ForceMenuTheme)
             {
-                HKVocals.HKVocals._globalSettings.ForceMenuTheme = true;
+                HKVocals.HKVocals._globalSettings.ForceMenuTheme = false;
                 var tmpStyle = MenuStyles.Instance.styles.First(x => x.styleObject.name.Contains("HKVStyle"));
                 MenuStyles.Instance.SetStyle(MenuStyles.Instance.styles.ToList().IndexOf(tmpStyle), false);
             }
